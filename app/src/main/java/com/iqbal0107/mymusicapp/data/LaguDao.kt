@@ -6,27 +6,33 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LaguDao {
 
-    // Ambil semua lagu, diurutkan by judul A-Z
-    @Query("SELECT * FROM lagu ORDER BY judul ASC")
-    fun getAllLagu(): Flow<List<Lagu>>
+    @Query("SELECT * FROM lagu WHERE isDeleted = 0 AND (:mood = 'Semua' OR mood = :mood) ORDER BY judul ASC")
+    fun getAllLagu(mood: String = "Semua"): Flow<List<Lagu>>
 
-    // Ambil lagu berdasarkan mood
-    @Query("SELECT * FROM lagu WHERE mood = :mood ORDER BY judul ASC")
-    fun getLaguByMood(mood: String): Flow<List<Lagu>>
+    @Query("SELECT * FROM lagu WHERE isDeleted = 1 ORDER BY judul ASC")
+    fun getDeletedLagu(): Flow<List<Lagu>>
 
-    // Tambah lagu baru
+    @Query("SELECT * FROM lagu WHERE playlistId = :playlistId AND isDeleted = 0 ORDER BY judul ASC")
+    fun getLaguByPlaylist(playlistId: Int): Flow<List<Lagu>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLagu(lagu: Lagu)
 
-    // Update lagu
     @Update
     suspend fun updateLagu(lagu: Lagu)
 
-    // Hapus lagu
     @Delete
     suspend fun deleteLagu(lagu: Lagu)
 
-    // Ambil lagu by id (untuk form edit)
     @Query("SELECT * FROM lagu WHERE id = :id")
     suspend fun getLaguById(id: Int): Lagu?
+
+    @Query("UPDATE lagu SET isDeleted = 1 WHERE id = :id")
+    suspend fun moveToRecycleBin(id: Int)
+
+    @Query("UPDATE lagu SET isDeleted = 0 WHERE id = :id")
+    suspend fun restoreLagu(id: Int)
+
+    @Query("DELETE FROM lagu WHERE id = :id")
+    suspend fun deletePermanent(id: Int)
 }

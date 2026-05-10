@@ -5,9 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -22,27 +23,32 @@ fun EditLaguScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val playlistList by viewModel.playlistList.collectAsState()
 
+    var lagu by remember { mutableStateOf<Lagu?>(null) }
     var judul by remember { mutableStateOf("") }
     var artis by remember { mutableStateOf("") }
     var genre by remember { mutableStateOf("") }
     var catatan by remember { mutableStateOf("") }
     var selectedMood by remember { mutableStateOf("Happy") }
     var expandedMood by remember { mutableStateOf(false) }
+    var selectedPlaylistId by remember { mutableStateOf<Int?>(null) }
+    var expandedPlaylist by remember { mutableStateOf(false) }
     var isLoaded by remember { mutableStateOf(false) }
 
     var judulError by remember { mutableStateOf(false) }
     var artisError by remember { mutableStateOf(false) }
 
-    // Load data existing saat screen pertama kali dibuka
     LaunchedEffect(laguId) {
-        val lagu = viewModel.getLaguById(laguId)
-        lagu?.let {
+        val result = viewModel.getLaguById(laguId)
+        result?.let {
+            lagu = it
             judul = it.judul
             artis = it.artis
             genre = it.genre
             catatan = it.catatan
             selectedMood = it.mood
+            selectedPlaylistId = it.playlistId
             isLoaded = true
         }
     }
@@ -53,16 +59,17 @@ fun EditLaguScreen(
                 title = { Text("Edit Lagu") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 }
             )
         }
     ) { paddingValues ->
         if (!isLoaded) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            Box(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
         } else {
             Column(
                 modifier = Modifier
@@ -72,31 +79,20 @@ fun EditLaguScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
-                    value = judul,
-                    onValueChange = { judul = it; judulError = false },
-                    label = { Text("Judul Lagu *") },
-                    isError = judulError,
+                    value = judul, onValueChange = { judul = it; judulError = false },
+                    label = { Text("Judul Lagu *") }, isError = judulError,
                     supportingText = { if (judulError) Text("Judul tidak boleh kosong") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
-
                 OutlinedTextField(
-                    value = artis,
-                    onValueChange = { artis = it; artisError = false },
-                    label = { Text("Artis *") },
-                    isError = artisError,
+                    value = artis, onValueChange = { artis = it; artisError = false },
+                    label = { Text("Artis *") }, isError = artisError,
                     supportingText = { if (artisError) Text("Artis tidak boleh kosong") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
-
                 OutlinedTextField(
-                    value = genre,
-                    onValueChange = { genre = it },
-                    label = { Text("Genre") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    value = genre, onValueChange = { genre = it },
+                    label = { Text("Genre") }, modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
 
                 ExposedDropdownMenuBox(
@@ -105,11 +101,11 @@ fun EditLaguScreen(
                 ) {
                     OutlinedTextField(
                         value = "${moodEmoji(selectedMood)} $selectedMood",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Mood") },
+                        onValueChange = {}, readOnly = true, label = { Text("Mood") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMood) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = expandedMood,
@@ -124,12 +120,38 @@ fun EditLaguScreen(
                     }
                 }
 
+                ExposedDropdownMenuBox(
+                    expanded = expandedPlaylist,
+                    onExpandedChange = { expandedPlaylist = !expandedPlaylist }
+                ) {
+                    OutlinedTextField(
+                        value = playlistList.find { it.id == selectedPlaylistId }?.nama ?: "Pilih Playlist",
+                        onValueChange = {}, readOnly = true, label = { Text("Playlist") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPlaylist) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedPlaylist,
+                        onDismissRequest = { expandedPlaylist = false }
+                    ) {
+                        playlistList.forEach { playlist ->
+                            DropdownMenuItem(
+                                text = { Text(playlist.nama) },
+                                onClick = {
+                                    selectedPlaylistId = playlist.id
+                                    expandedPlaylist = false
+                                }
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
-                    value = catatan,
-                    onValueChange = { catatan = it },
+                    value = catatan, onValueChange = { catatan = it },
                     label = { Text("Catatan pribadi") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
+                    modifier = Modifier.fillMaxWidth(), minLines = 2
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -151,16 +173,15 @@ fun EditLaguScreen(
                                 artis = artis.trim(),
                                 genre = genre.trim(),
                                 mood = selectedMood,
-                                catatan = catatan.trim()
+                                catatan = catatan.trim(),
+                                playlistId = selectedPlaylistId ?: lagu?.playlistId ?: 0
                             )
                         )
                         Toast.makeText(context, "Lagu berhasil diupdate!", Toast.LENGTH_SHORT).show()
                         onNavigateBack()
                     },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Simpan Perubahan")
-                }
+                ) { Text("Simpan Perubahan") }
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.iqbal0107.mymusicapp.ui.screen
 
-
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,22 +36,47 @@ fun ListLaguScreen(
     isDarkMode: Boolean,
     onToggleDarkMode: () -> Unit,
     onNavigateToTambah: () -> Unit,
-    onNavigateToEdit: (Int) -> Unit
+    onNavigateToEdit: (Int) -> Unit,
+    onNavigateToRecycleBin: () -> Unit,
+    onNavigateToPlaylist: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val laguList by viewModel.laguList.collectAsState()
     val selectedMood by viewModel.selectedMood.collectAsState()
+    var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("🎵 My Playlist") },
                 actions = {
-                    // Toggle Dark Mode
                     IconButton(onClick = onToggleDarkMode) {
                         Icon(
                             imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
                             contentDescription = "Toggle Dark Mode"
                         )
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("🗑️ Recycle Bin") },
+                                onClick = { showMenu = false; onNavigateToRecycleBin() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("📋 Playlist") },
+                                onClick = { showMenu = false; onNavigateToPlaylist() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("🎨 Pengaturan Tema") },
+                                onClick = { showMenu = false; onNavigateToSettings() }
+                            )
+                        }
                     }
                 }
             )
@@ -64,8 +88,6 @@ fun ListLaguScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-
-            // Filter Mood (LazyRow chip)
             LazyRow(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -79,41 +101,30 @@ fun ListLaguScreen(
                 }
             }
 
-            // Empty State
             if (laguList.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "🎵", style = MaterialTheme.typography.displayLarge)
+                        Text("🎵", style = MaterialTheme.typography.displayLarge)
                         Spacer(modifier = Modifier.height(8.dp))
+                        Text("Belum ada lagu", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = "Belum ada lagu",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Tap + untuk tambah lagu favorit",
+                            "Tap + untuk tambah lagu favorit",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             } else {
-                // List Lagu dengan padding bawah agar tidak tertutup FAB
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 8.dp, end = 8.dp,
-                        top = 4.dp, bottom = 80.dp // padding bawah agar tidak tertutup FAB
-                    ),
+                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(laguList) { lagu ->
                         LaguItem(
                             lagu = lagu,
                             onEdit = { onNavigateToEdit(lagu.id) },
-                            onDelete = { viewModel.hapusLagu(lagu) }
+                            onDelete = { viewModel.moveToRecycleBin(lagu.id) }
                         )
                     }
                 }
@@ -123,26 +134,21 @@ fun ListLaguScreen(
 }
 
 @Composable
-fun LaguItem(
-    lagu: Lagu,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
+fun LaguItem(lagu: Lagu, onEdit: () -> Unit, onDelete: () -> Unit) {
     var showMenu by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Dialog Konfirmasi Hapus
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text("Hapus Lagu?") },
-            text = { Text("Yakin ingin menghapus \"${lagu.judul}\"?") },
+            text = { Text("\"${lagu.judul}\" akan dipindahkan ke Recycle Bin.") },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete()
                     showDialog = false
-                    Toast.makeText(context, "Lagu dihapus", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Dipindahkan ke Recycle Bin", Toast.LENGTH_SHORT).show()
                 }) { Text("Hapus") }
             },
             dismissButton = {
@@ -151,50 +157,28 @@ fun LaguItem(
         )
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onEdit() }
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Emoji mood sebagai "gambar"
+    Card(modifier = Modifier.fillMaxWidth().clickable { onEdit() }) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = moodEmoji(lagu.mood),
+                moodEmoji(lagu.mood),
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(end = 12.dp)
             )
-
-            // Info Lagu (2 komponen: judul + artis/genre)
             Column(modifier = Modifier.weight(1f)) {
+                Text(lagu.judul, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    text = lagu.judul,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "${lagu.artis} • ${lagu.genre}",
+                    "${lagu.artis} • ${lagu.genre}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = lagu.mood,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text(lagu.mood, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary)
             }
-
-            // Overflow menu
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                 }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(
                         text = { Text("Edit") },
                         onClick = { showMenu = false; onEdit() },

@@ -5,10 +5,15 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Lagu::class], version = 1, exportSchema = false)
+@Database(
+    entities = [Lagu::class, Playlist::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class LaguDatabase : RoomDatabase() {
 
     abstract fun laguDao(): LaguDao
+    abstract fun playlistDao(): PlaylistDao
 
     companion object {
         @Volatile
@@ -20,7 +25,9 @@ abstract class LaguDatabase : RoomDatabase() {
                     context.applicationContext,
                     LaguDatabase::class.java,
                     "lagu_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }
