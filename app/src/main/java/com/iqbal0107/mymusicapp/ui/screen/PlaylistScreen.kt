@@ -17,11 +17,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.iqbal0107.mymusicapp.data.Lagu
 import com.iqbal0107.mymusicapp.data.Playlist
 import com.iqbal0107.mymusicapp.viewmodel.LaguViewModel
@@ -35,7 +37,6 @@ fun PlaylistScreen(
     val playlistList by viewModel.playlistList.collectAsState()
     val laguList by viewModel.laguList.collectAsState()
 
-    // State untuk melacak playlist mana yang sedang dibuka
     var selectedPlaylist by remember { mutableStateOf<Playlist?>(null) }
     var showTambahDialog by remember { mutableStateOf(false) }
     var editPlaylist by remember { mutableStateOf<Playlist?>(null) }
@@ -48,7 +49,8 @@ fun PlaylistScreen(
                 title = {
                     Text(
                         text = selectedPlaylist?.nama ?: "Koleksi Playlist",
-                        fontWeight = FontWeight.ExtraBold
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.sp
                     )
                 },
                 navigationIcon = {
@@ -69,9 +71,9 @@ fun PlaylistScreen(
                     onClick = { showTambahDialog = true },
                     containerColor = primaryColor,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp),
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Playlist Baru") }
+                    shape = RoundedCornerShape(20.dp),
+                    icon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) },
+                    text = { Text("Playlist Baru", fontWeight = FontWeight.Bold) }
                 )
             }
         }
@@ -83,55 +85,38 @@ fun PlaylistScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             if (selectedPlaylist != null) {
-                // --- VIEW 1: DETAIL PLAYLIST (LAGU-LAGU DI DALAMNYA) ---
                 val laguDiPlaylist = laguList.filter { it.playlistId == selectedPlaylist!!.id }
 
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
-                        Column(modifier = Modifier.padding(bottom = 16.dp)) {
-                            Text(
-                                text = selectedPlaylist?.deskripsi?.ifBlank { "Tidak ada deskripsi" } ?: "",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "${laguDiPlaylist.size} Lagu",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = primaryColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(top = 16.dp), thickness = 0.5.dp)
-                        }
+                        PlaylistHeaderSection(selectedPlaylist!!, laguDiPlaylist.size, primaryColor)
                     }
 
                     if (laguDiPlaylist.isEmpty()) {
                         item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                                Text("Playlist ini masih kosong 🎵", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            EmptySongsView()
                         }
                     }
 
                     items(laguDiPlaylist) { lagu ->
-                        LaguDiPlaylistCard(lagu = lagu)
+                        LaguPremiumItem(
+                            lagu = lagu,
+                            onRemove = {
+                                viewModel.updateLagu(lagu.copy(playlistId = 0))
+                                Toast.makeText(context, "Berhasil dihapus dari playlist", Toast.LENGTH_SHORT).show()
+                            }
+                        )
                     }
                 }
             } else {
-                // --- VIEW 2: DAFTAR SEMUA PLAYLIST ---
                 if (playlistList.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("📋", style = MaterialTheme.typography.displayLarge)
-                            Text("Belum ada playlist", style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
+                    EmptyPlaylistView()
                 } else {
                     LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(playlistList) { playlist ->
@@ -168,6 +153,97 @@ fun PlaylistScreen(
 }
 
 @Composable
+fun PlaylistHeaderSection(playlist: Playlist, count: Int, primaryColor: Color) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = playlist.deskripsi.ifBlank { "Kumpulan lagu pilihan untuk harimu." },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 22.sp
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = primaryColor,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "$count Lagu tersimpan",
+                style = MaterialTheme.typography.labelLarge,
+                color = primaryColor,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    }
+}
+
+@Composable
+fun LaguPremiumItem(lagu: Lagu, onRemove: () -> Unit) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(Color.Gray.copy(0.2f), Color.Gray.copy(0.1f))
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("🎵", fontSize = 20.sp)
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = lagu.judul,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = lagu.artis,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Box {
+            IconButton(onClick = { showMenu = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = null)
+            }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Hapus dari playlist") },
+                    onClick = {
+                        showMenu = false
+                        onRemove()
+                    },
+                    leadingIcon = { Icon(Icons.Default.LinkOff, null) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PlaylistItemModern(
     playlist: Playlist,
     onClick: () -> Unit,
@@ -181,20 +257,21 @@ fun PlaylistItemModern(
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("📋", style = MaterialTheme.typography.headlineSmall)
-                }
+                Text("📋", fontSize = 28.sp)
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -202,11 +279,12 @@ fun PlaylistItemModern(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = playlist.nama,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.5).sp
                 )
                 Text(
-                    text = playlist.deskripsi.ifBlank { "Koleksi lagu favorit" },
+                    text = playlist.deskripsi.ifBlank { "Playlist pribadi" },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -214,77 +292,59 @@ fun PlaylistItemModern(
                 )
             }
 
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null)
-                }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Edit") },
-                        onClick = { showMenu = false; onEdit() },
-                        leadingIcon = { Icon(Icons.Default.Edit, null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Hapus") },
-                        onClick = { showMenu = false; onDelete() },
-                        leadingIcon = { Icon(Icons.Default.Delete, null) }
-                    )
-                }
+            IconButton(onClick = { showMenu = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = null)
+            }
+
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Ubah Nama") },
+                    onClick = { showMenu = false; onEdit() },
+                    leadingIcon = { Icon(Icons.Default.Edit, null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Hapus Playlist") },
+                    onClick = { showMenu = false; onDelete() },
+                    leadingIcon = { Icon(Icons.Default.Delete, null) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun LaguDiPlaylistCard(lagu: Lagu) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+fun EmptyPlaylistView() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("✨", fontSize = 60.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Belum Ada Playlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Buat playlist pertamamu sekarang!", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun EmptySongsView() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 60.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Surface(
-            modifier = Modifier.size(50.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text("🎵", style = MaterialTheme.typography.titleMedium)
-            }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column {
-            Text(
-                text = lagu.judul,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = lagu.artis,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Icon(Icons.Default.LibraryMusic, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(0.3f))
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Playlist ini kosong", color = Color.Gray)
     }
 }
 
 @Composable
-fun PlaylistDialog(
-    playlist: Playlist?,
-    onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
-) {
+fun PlaylistDialog(playlist: Playlist?, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var nama by remember { mutableStateOf(playlist?.nama ?: "") }
     var deskripsi by remember { mutableStateOf(playlist?.deskripsi ?: "") }
     var namaError by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (playlist != null) "Edit Playlist" else "Playlist Baru") },
+        title = { Text(if (playlist != null) "Edit Playlist" else "Buat Playlist", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -292,27 +352,23 @@ fun PlaylistDialog(
                     onValueChange = { nama = it; namaError = false },
                     label = { Text("Nama Playlist") },
                     isError = namaError,
-                    supportingText = { if (namaError) Text("Nama tidak boleh kosong") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(16.dp)
                 )
                 OutlinedTextField(
                     value = deskripsi,
                     onValueChange = { deskripsi = it },
-                    label = { Text("Deskripsi (Opsional)") },
+                    label = { Text("Deskripsi Singkat") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(16.dp)
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    if (nama.isBlank()) namaError = true
-                    else onSave(nama.trim(), deskripsi.trim())
-                },
-                shape = RoundedCornerShape(8.dp)
+                onClick = { if (nama.isBlank()) namaError = true else onSave(nama.trim(), deskripsi.trim()) },
+                shape = RoundedCornerShape(12.dp)
             ) { Text("Simpan") }
         },
         dismissButton = {
