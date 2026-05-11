@@ -7,9 +7,8 @@ import com.iqbal0107.mymusicapp.data.Lagu
 import com.iqbal0107.mymusicapp.data.LaguDatabase
 import com.iqbal0107.mymusicapp.data.Playlist
 import com.iqbal0107.mymusicapp.repository.LaguRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class LaguViewModel(application: Application) : AndroidViewModel(application) {
@@ -19,51 +18,41 @@ class LaguViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedMood = MutableStateFlow("Semua")
     val selectedMood: StateFlow<String> = _selectedMood.asStateFlow()
 
-    private val _laguList = MutableStateFlow<List<Lagu>>(emptyList())
-    val laguList: StateFlow<List<Lagu>> = _laguList.asStateFlow()
-
     private val _deletedLaguList = MutableStateFlow<List<Lagu>>(emptyList())
     val deletedLaguList: StateFlow<List<Lagu>> = _deletedLaguList.asStateFlow()
 
     private val _playlistList = MutableStateFlow<List<Playlist>>(emptyList())
     val playlistList: StateFlow<List<Playlist>> = _playlistList.asStateFlow()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val laguList: StateFlow<List<Lagu>> = _selectedMood
+        .flatMapLatest { mood -> repository.getAllLagu(mood) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     init {
         val db = LaguDatabase.getDatabase(application)
         repository = LaguRepository(db.laguDao(), db.playlistDao())
-        loadLagu()
         loadDeletedLagu()
         loadPlaylist()
     }
 
-    private fun loadLagu() {
-        viewModelScope.launch {
-            repository.getAllLagu(_selectedMood.value).collect {
-                _laguList.value = it
-            }
-        }
-    }
-
     private fun loadDeletedLagu() {
         viewModelScope.launch {
-            repository.getDeletedLagu().collect {
-                _deletedLaguList.value = it
-            }
+            repository.getDeletedLagu().collect { _deletedLaguList.value = it }
         }
     }
 
     private fun loadPlaylist() {
         viewModelScope.launch {
-            repository.getAllPlaylist().collect {
-                _playlistList.value = it
-            }
+            repository.getAllPlaylist().collect { _playlistList.value = it }
         }
     }
 
-    fun filterByMood(mood: String) {
-        _selectedMood.value = mood
-        loadLagu()
-    }
+    fun filterByMood(mood: String) { _selectedMood.value = mood }
 
     fun tambahLagu(lagu: Lagu) = viewModelScope.launch { repository.insertLagu(lagu) }
     fun updateLagu(lagu: Lagu) = viewModelScope.launch { repository.updateLagu(lagu) }

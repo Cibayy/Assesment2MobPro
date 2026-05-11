@@ -97,12 +97,11 @@ fun RecycleBinItem(lagu: Lagu, onRestore: () -> Unit, onDeletePermanent: () -> U
                 modifier = Modifier.padding(end = 12.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(lagu.judul, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    "${lagu.artis} • ${lagu.genre}",
+                Text(lagu.judul, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold)
+                Text("${lagu.artis} • ${lagu.genre}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = {
                 onRestore()

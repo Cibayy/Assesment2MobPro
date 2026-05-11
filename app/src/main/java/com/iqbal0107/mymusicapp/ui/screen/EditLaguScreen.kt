@@ -23,7 +23,6 @@ fun EditLaguScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val playlistList by viewModel.playlistList.collectAsState()
 
     var lagu by remember { mutableStateOf<Lagu?>(null) }
     var judul by remember { mutableStateOf("") }
@@ -32,8 +31,6 @@ fun EditLaguScreen(
     var catatan by remember { mutableStateOf("") }
     var selectedMood by remember { mutableStateOf("Happy") }
     var expandedMood by remember { mutableStateOf(false) }
-    var selectedPlaylistId by remember { mutableStateOf<Int?>(null) }
-    var expandedPlaylist by remember { mutableStateOf(false) }
     var isLoaded by remember { mutableStateOf(false) }
 
     var judulError by remember { mutableStateOf(false) }
@@ -48,7 +45,6 @@ fun EditLaguScreen(
             genre = it.genre
             catatan = it.catatan
             selectedMood = it.mood
-            selectedPlaylistId = it.playlistId
             isLoaded = true
         }
     }
@@ -92,7 +88,8 @@ fun EditLaguScreen(
                 )
                 OutlinedTextField(
                     value = genre, onValueChange = { genre = it },
-                    label = { Text("Genre") }, modifier = Modifier.fillMaxWidth(), singleLine = true
+                    label = { Text("Genre") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
 
                 ExposedDropdownMenuBox(
@@ -115,34 +112,6 @@ fun EditLaguScreen(
                             DropdownMenuItem(
                                 text = { Text("${moodEmoji(mood)} $mood") },
                                 onClick = { selectedMood = mood; expandedMood = false }
-                            )
-                        }
-                    }
-                }
-
-                ExposedDropdownMenuBox(
-                    expanded = expandedPlaylist,
-                    onExpandedChange = { expandedPlaylist = !expandedPlaylist }
-                ) {
-                    OutlinedTextField(
-                        value = playlistList.find { it.id == selectedPlaylistId }?.nama ?: "Pilih Playlist",
-                        onValueChange = {}, readOnly = true, label = { Text("Playlist") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPlaylist) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expandedPlaylist,
-                        onDismissRequest = { expandedPlaylist = false }
-                    ) {
-                        playlistList.forEach { playlist ->
-                            DropdownMenuItem(
-                                text = { Text(playlist.nama) },
-                                onClick = {
-                                    selectedPlaylistId = playlist.id
-                                    expandedPlaylist = false
-                                }
                             )
                         }
                     }
@@ -174,7 +143,7 @@ fun EditLaguScreen(
                                 genre = genre.trim(),
                                 mood = selectedMood,
                                 catatan = catatan.trim(),
-                                playlistId = selectedPlaylistId ?: lagu?.playlistId ?: 0
+                                playlistId = lagu?.playlistId ?: 0
                             )
                         )
                         Toast.makeText(context, "Lagu berhasil diupdate!", Toast.LENGTH_SHORT).show()
