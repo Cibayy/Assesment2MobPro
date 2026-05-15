@@ -26,8 +26,9 @@ abstract class LaguDatabase : RoomDatabase() {
                     LaguDatabase::class.java,
                     "lagu_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
+
                 INSTANCE = instance
                 instance
             }

@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -91,7 +93,8 @@ fun ListLaguScreen(
                 actions = {
                     IconButton(onClick = { isGridView = !isGridView }) {
                         Icon(
-                            imageVector = if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                            imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList
+                            else Icons.Default.GridView,
                             contentDescription = "Toggle View"
                         )
                     }
@@ -146,7 +149,8 @@ fun ListLaguScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (laguList.isEmpty()) "Belum ada lagu" else "${laguList.size} lagu",
+                        text = if (laguList.isEmpty()) "Belum ada lagu"
+                        else "${laguList.size} lagu",
                         style = MaterialTheme.typography.labelLarge,
                         color = primaryColor,
                         fontWeight = FontWeight.SemiBold
@@ -356,9 +360,7 @@ fun LaguItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-
-                    // --- PENAMBAHAN CATATAN PRIBADI ---
-                    if (!lagu.catatan.isNullOrBlank()) {
+                    if (lagu.catatan.isNotBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "📝 ${lagu.catatan}",
@@ -370,14 +372,17 @@ fun LaguItem(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    // ----------------------------------
-
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (lagu.genre.isNotBlank()) {
                             AssistChip(
                                 onClick = {},
-                                label = { Text(lagu.genre, style = MaterialTheme.typography.labelSmall) },
+                                label = {
+                                    Text(
+                                        lagu.genre,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                },
                                 shape = RoundedCornerShape(50),
                                 modifier = Modifier.height(22.dp),
                                 colors = AssistChipDefaults.assistChipColors(
@@ -425,7 +430,9 @@ fun LaguItem(
                         DropdownMenuItem(
                             text = { Text("Tambah ke Playlist") },
                             onClick = { showMenu = false; showPlaylistDialog = true },
-                            leadingIcon = { Icon(Icons.Default.PlaylistAdd, null) }
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null)
+                            }
                         )
                         DropdownMenuItem(
                             text = { Text("Hapus") },
@@ -538,7 +545,9 @@ fun LaguGridItem(
                             DropdownMenuItem(
                                 text = { Text("Tambah ke Playlist") },
                                 onClick = { showMenu = false; showPlaylistDialog = true },
-                                leadingIcon = { Icon(Icons.Default.PlaylistAdd, null) }
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null)
+                                }
                             )
                             DropdownMenuItem(
                                 text = { Text("Hapus") },
@@ -565,9 +574,7 @@ fun LaguGridItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                // --- PENAMBAHAN CATATAN PRIBADI (Grid) ---
-                if (!lagu.catatan.isNullOrBlank()) {
+                if (lagu.catatan.isNotBlank()) {
                     Text(
                         text = "📝 ${lagu.catatan}",
                         style = MaterialTheme.typography.labelSmall.copy(
@@ -578,14 +585,15 @@ fun LaguGridItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                // ------------------------------------------
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 if (lagu.genre.isNotBlank()) {
                     AssistChip(
                         onClick = {},
-                        label = { Text(lagu.genre, style = MaterialTheme.typography.labelSmall) },
+                        label = {
+                            Text(lagu.genre, style = MaterialTheme.typography.labelSmall)
+                        },
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.height(22.dp),
                         colors = AssistChipDefaults.assistChipColors(
@@ -611,7 +619,7 @@ fun LaguGridItem(
     }
 }
 
-// ── SHARED DIALOGS (Tetap Sama) ─────────────────────────────
+// ── SHARED DIALOGS ─────────────────────────────────────────
 @Composable
 fun DeleteDialog(
     show: Boolean,
